@@ -97,7 +97,7 @@ function resizeCanvasToBoard() {
   ctx.imageSmoothingEnabled = false;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#101827';
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
