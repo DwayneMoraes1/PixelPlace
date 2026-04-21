@@ -48,6 +48,14 @@ If port 3000 is taken:
 $env:PORT=3010; .\start.ps1
 ```
 
+## Interactive UI
+
+After starting the server, open:
+
+- `http://localhost:<PORT>/`
+
+You can open it in multiple browser tabs (or on other devices on the same network if you bind/port-forward) and place pixels live with the shared 10s cooldown per user.
+
 Health check:
 
 - `GET /health`

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PixelPlace</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b0f19;
+        --panel: #121a2a;
+        --text: #e6e9f2;
+        --muted: #a6afc3;
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #6aa9ff;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans",
+          "Apple Color Emoji", "Segoe UI Emoji";
+        background: radial-gradient(1200px 600px at 30% 10%, #182546 0%, var(--bg) 60%);
+        color: var(--text);
+      }
+      .wrap {
+        display: grid;
+        grid-template-columns: 320px 1fr;
+        gap: 16px;
+        padding: 16px;
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+      .card {
+        background: color-mix(in srgb, var(--panel) 92%, black);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 18px;
+        letter-spacing: 0.2px;
+      }
+      .muted {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .spacer {
+        height: 10px;
+      }
+      .pill {
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--muted);
+      }
+      .pill.ok {
+        color: #a7f3d0;
+        border-color: rgba(16, 185, 129, 0.45);
+        background: rgba(16, 185, 129, 0.12);
+      }
+      .pill.bad {
+        color: #fecaca;
+        border-color: rgba(239, 68, 68, 0.45);
+        background: rgba(239, 68, 68, 0.12);
+      }
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(8, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .swatch {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        border-radius: 10px;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        cursor: pointer;
+        outline: none;
+        transition: transform 80ms ease, border-color 80ms ease;
+      }
+      .swatch:hover {
+        transform: translateY(-1px);
+      }
+      .swatch.selected {
+        border-color: rgba(106, 169, 255, 0.95);
+        box-shadow: 0 0 0 3px rgba(106, 169, 255, 0.22);
+      }
+      .btn {
+        background: rgba(106, 169, 255, 0.14);
+        border: 1px solid rgba(106, 169, 255, 0.55);
+        color: var(--text);
+        padding: 10px 12px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-weight: 600;
+      }
+      .btn:active {
+        transform: translateY(1px);
+      }
+      .input {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text);
+        padding: 10px 12px;
+        width: 100%;
+      }
+      .boardCard {
+        display: grid;
+        place-items: center;
+        padding: 12px;
+      }
+      canvas {
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+        image-rendering: pixelated;
+      }
+      .hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 12px;
+        color: var(--muted);
+        word-break: break-all;
+      }
+      @media (max-width: 960px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <section class="card">
+        <h1>PixelPlace</h1>
+        <div class="muted">
+          Click on the board to place a pixel. Everyone sees updates live. Cooldown is enforced by the server.
+        </div>
+
+        <div class="spacer"></div>
+        <div class="row">
+          <div id="status" class="pill bad">Disconnected</div>
+          <div id="cooldown" class="pill">Cooldown: —</div>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="muted">Selected color</div>
+        <div class="row">
+          <div id="selectedColor" class="pill">—</div>
+          <button id="randomBtn" class="btn" type="button">Random color</button>
+        </div>
+
+        <div class="palette" id="palette"></div>
+
+        <div class="spacer"></div>
+        <div class="muted">User</div>
+        <div id="userId" class="mono">—</div>
+
+        <div class="spacer"></div>
+        <div class="muted">Log</div>
+        <div id="log" class="mono" style="max-height: 220px; overflow: auto"></div>
+      </section>
+
+      <section class="card boardCard">
+        <canvas id="board" width="800" height="800"></canvas>
+        <div class="hint">Tip: zoom your browser to scale the pixels. The canvas uses “pixelated” rendering.</div>
+      </section>
+    </div>
+
+    <script type="module" src="./client.js"></script>
+  </body>
+</html>
+

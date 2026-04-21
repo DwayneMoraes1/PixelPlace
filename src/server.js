@@ -1,4 +1,6 @@
 import http from 'node:http';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { WebSocketServer } from 'ws';
 
@@ -79,6 +81,11 @@ async function main() {
 
   const app = express();
   app.use(express.json({ limit: '256kb' }));
+
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const publicDir = path.resolve(__dirname, '..', 'public');
+  app.use(express.static(publicDir));
 
   app.get('/health', (_req, res) => {
     res.json({
