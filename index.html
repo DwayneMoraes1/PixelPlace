@@ -159,7 +159,7 @@
       
       <div class="right">
         <div class="card" style="position: relative; padding: 0; overflow: hidden;">
-          <canvas id="board" width="200" height="200"></canvas>
+          <canvas id="board" width="800" height="800"></canvas>
         </div>
       </div>
     </div>
@@ -181,9 +181,11 @@
 
       let boardWidth = 200;
       let boardHeight = 200;
+      const pixelSize = 4;
       let cooldownMs = 2000;
       let cooldownUntil = 0;
       let boardData = new Uint8ClampedArray(boardWidth * boardHeight * 4).fill(255);
+      let hoverPos = null;
 
       let userId = Math.random().toString(36).slice(2, 10);
       let userColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
@@ -243,19 +245,37 @@
       }
 
       function resizeCanvasToBoard() {
+        canvas.width = boardWidth * pixelSize;
+        canvas.height = boardHeight * pixelSize;
         ctx.imageSmoothingEnabled = false;
-        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        renderBoard();
+      }
+
+      function renderBoard() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = "#ffffff";
-        ctx.fillRect(0, 0, boardWidth, boardHeight);
-        ctx.scale(4, 4);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        for (let y = 0; y < boardHeight; y++) {
+          for (let x = 0; x < boardWidth; x++) {
+            const idx = (y * boardWidth + x) * 4;
+            const r = boardData[idx];
+            const g = boardData[idx + 1];
+            const b = boardData[idx + 2];
+            if (r === 255 && g === 255 && b === 255) continue;
+            ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+            ctx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+          }
+        }
+
+        if (hoverPos) {
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(hoverPos.x * pixelSize + 0.5, hoverPos.y * pixelSize + 0.5, pixelSize - 1, pixelSize - 1);
+        }
       }
 
       function drawPixel(x, y, color) {
-        ctx.fillStyle = color;
-        ctx.fillRect(x, y, 1, 1);
-        
-        // Store in board data
         const idx = (y * boardWidth + x) * 4;
         const rgb = hexToRgb(color);
         if (rgb) {
@@ -263,6 +283,7 @@
           boardData[idx+1] = rgb.g;
           boardData[idx+2] = rgb.b;
           boardData[idx+3] = 255;
+          renderBoard();
         }
       }
       
@@ -277,11 +298,11 @@
 
       function getBoardPos(e) {
         const rect = canvas.getBoundingClientRect();
-        const scaleX = boardWidth / rect.width;
-        const scaleY = boardHeight / rect.height;
+        const x = Math.floor((e.clientX - rect.left) / pixelSize);
+        const y = Math.floor((e.clientY - rect.top) / pixelSize);
         return {
-          x: Math.floor((e.clientX - rect.left) * scaleX),
-          y: Math.floor((e.clientY - rect.top) * scaleY)
+          x: Math.max(0, Math.min(boardWidth - 1, x)),
+          y: Math.max(0, Math.min(boardHeight - 1, y))
         };
       }
 
@@ -289,6 +310,17 @@
       resizeCanvasToBoard();
       renderPalette();
       userIdEl.textContent = userId;
+
+
+      canvas.addEventListener('mousemove', (e) => {
+        hoverPos = getBoardPos(e);
+        renderBoard();
+      });
+
+      canvas.addEventListener('mouseleave', () => {
+        hoverPos = null;
+        renderBoard();
+      });
 
       // Handle canvas clicks
       canvas.addEventListener('click', async (e) => {
@@ -354,11 +386,17 @@
       }
 
       function applyBoardSnapshot(pixels) {
-        resizeCanvasToBoard();
         boardData.fill(255);
         for (const pixel of pixels || []) {
-          drawPixel(pixel.x, pixel.y, pixel.color);
+          const idx = (pixel.y * boardWidth + pixel.x) * 4;
+          const rgb = hexToRgb(pixel.color);
+          if (!rgb) continue;
+          boardData[idx] = rgb.r;
+          boardData[idx + 1] = rgb.g;
+          boardData[idx + 2] = rgb.b;
+          boardData[idx + 3] = 255;
         }
+        renderBoard();
       }
 
       function setupConnection(conn) {
