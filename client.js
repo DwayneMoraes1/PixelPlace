@@ -66,7 +66,7 @@ function setStatus(ok, text) {
   statusEl.textContent = text;
   statusEl.classList.toggle('ok', ok);
   statusEl.classList.toggle('bad', !ok);
-}
+}ws 
 
 function setSelectedColor(c) {
   selectedColor = c;
@@ -147,7 +147,8 @@ function connect() {
   }
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  ws = new WebSocket(`${proto}//${location.host}`);
+  const WS_URL = 'wss://your-backend-host.onrender.com';
+  ws = new WebSocket(WS_URL);
 
   ws.addEventListener('open', () => {
     setStatus(true, 'Connected');
