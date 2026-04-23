@@ -190,6 +190,9 @@
       let room = null;
       let sendPixel, sendCursor;
       let peers = new Map();
+      let activePeer = null;
+      let isHost = false;
+      let currentRoomName = '';
 
       const palette = [
         '#6D001A', '#BE0039', '#FF4500', '#FFA800', '#FFD635', '#FFF8B8',
@@ -318,6 +321,98 @@
         setSelectedColor(c);
       });
 
+      function resetConnectionState(statusText = 'Disconnected') {
+        room = null;
+        peers.forEach((conn) => {
+          try { conn.close(); } catch {}
+        });
+        peers.clear();
+        if (activePeer && !activePeer.destroyed) {
+          try { activePeer.destroy(); } catch {}
+        }
+        activePeer = null;
+        isHost = false;
+        currentRoomName = '';
+        setStatus(false, statusText);
+        joinBtn.disabled = false;
+        joinBtn.textContent = 'Join';
+      }
+
+      function serializeBoard() {
+        const pixels = [];
+        for (let y = 0; y < boardHeight; y++) {
+          for (let x = 0; x < boardWidth; x++) {
+            const idx = (y * boardWidth + x) * 4;
+            const r = boardData[idx];
+            const g = boardData[idx + 1];
+            const b = boardData[idx + 2];
+            if (r === 255 && g === 255 && b === 255) continue;
+            pixels.push({ x, y, color: '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('') });
+          }
+        }
+        return pixels;
+      }
+
+      function applyBoardSnapshot(pixels) {
+        resizeCanvasToBoard();
+        boardData.fill(255);
+        for (const pixel of pixels || []) {
+          drawPixel(pixel.x, pixel.y, pixel.color);
+        }
+      }
+
+      function setupConnection(conn) {
+        conn.on('open', () => {
+          const peerDisplay = conn.peer.replace('pixelplace-', '');
+          log(`Connected to: ${peerDisplay}`);
+          peers.set(conn.peer, conn);
+          room = currentRoomName || true;
+          setStatus(true, 'Connected');
+          joinBtn.disabled = false;
+          joinBtn.textContent = isHost ? 'Hosting' : 'Joined!';
+
+          if (isHost) {
+            conn.send({ type: 'board-sync', pixels: serializeBoard() });
+          }
+        });
+
+        conn.on('data', (data) => {
+          if (!data || typeof data !== 'object') return;
+
+          if (data.type === 'pixel' && data.user !== userId) {
+            drawPixel(data.x, data.y, data.color);
+            if (isHost) {
+              peers.forEach((peerConn, peerId) => {
+                if (peerId !== conn.peer && peerConn.open) {
+                  peerConn.send(data);
+                }
+              });
+            }
+          }
+
+          if (data.type === 'board-sync' && Array.isArray(data.pixels)) {
+            applyBoardSnapshot(data.pixels);
+            log(`Loaded ${data.pixels.length} pixels from room`);
+          }
+        });
+
+        conn.on('close', () => {
+          log(`Disconnected: ${conn.peer.replace('pixelplace-', '')}`);
+          peers.delete(conn.peer);
+          if (!isHost && peers.size === 0) {
+            resetConnectionState('Disconnected');
+          }
+        });
+
+        conn.on('error', (err) => {
+          log('Connection error: ' + (err?.message || err));
+          peers.delete(conn.peer);
+          if (!isHost) {
+            resetConnectionState('Failed');
+          }
+        });
+      }
+
       // Join room button
       joinBtn.addEventListener('click', async () => {
         const roomName = roomNameInput.value.trim();
@@ -326,70 +421,83 @@
           return;
         }
 
+        if (activePeer || room) {
+          resetConnectionState('Disconnected');
+        }
+
         joinBtn.disabled = true;
         joinBtn.textContent = 'Connecting...';
+        setStatus(false, 'Connecting...');
+        currentRoomName = roomName;
 
         try {
           // Use PeerJS for P2P connections
           const PeerJS = await import('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/+esm');
           const Peer = PeerJS.default || PeerJS.Peer;
-          
+
           // Create peer - first user gets this ID, others will get error and connect
           const peerId = 'pixelplace-' + roomName;
           const peer = new Peer(peerId, {
             debug: 1
           });
-          
-          peer.on('open', (id) => {
-            log('Connected to signaling server');
-            setStatus(true, 'Connected');
-            joinBtn.textContent = 'Joined!';
-            room = true;
-            
+          activePeer = peer;
+
+          peer.on('open', () => {
+            isHost = true;
+            log('Connected to signaling server as room host');
+            setStatus(false, 'Waiting for peer');
+            joinBtn.disabled = false;
+            joinBtn.textContent = 'Hosting';
+            room = roomName;
+
             // Listen for incoming connections from other users
             peer.on('connection', (conn) => {
-              setupConnection(conn, true);
+              setupConnection(conn);
             });
-            
+
             log('Waiting for others...');
           });
-          
+
           peer.on('error', (err) => {
             log('Peer error: ' + err.type);
-            
+
             // If host ID taken, create new peer to connect to host
             if (err.type === 'unavailable-id') {
-              log('Host exists, connecting...');
+              isHost = false;
+              try { peer.destroy(); } catch {}
               const newPeer = new Peer(null, { debug: 1 });
+              activePeer = newPeer;
+              log('Host exists, connecting...');
+
               newPeer.on('open', () => {
+                log('Connected to signaling server as guest');
                 const conn = newPeer.connect(peerId, { reliable: true });
-                setupConnection(conn, false);
+                setupConnection(conn);
               });
+
+              newPeer.on('error', (guestErr) => {
+                log('Guest peer error: ' + guestErr.type);
+                resetConnectionState('Failed');
+              });
+            } else {
+              resetConnectionState('Failed');
             }
           });
-          
-          function setupConnection(conn, isHost) {
-            conn.on('open', () => {
-              const peerDisplay = conn.peer.replace('pixelplace-', '');
-              log(`Connected to: ${peerDisplay}`);
-              peers.set(conn.peer, conn);
-              
-              // If we're host, send empty board (new users start fresh)
-              // In a full implementation, you'd sync the full board
-            });
-            
-            conn.on('data', (data) => {
-              if (data.type === 'pixel' && data.user !== userId) {
-                drawPixel(data.x, data.y, data.color);
-              }
-            });
-            
-            conn.on('close', () => {
-              log(`Disconnected: ${conn.peer.replace('pixelplace-', '')}`);
-              peers.delete(conn.peer);
-            });
-          }
-          
+
+          peer.on('disconnected', () => {
+            log('Lost signaling server connection');
+            if (!isHost) {
+              resetConnectionState('Disconnected');
+            }
+          });
+
+          peer.on('close', () => {
+            log('Peer closed');
+            if (!isHost) {
+              resetConnectionState('Disconnected');
+            }
+          });
+
           // Override sendPixel to use all connections
           sendPixel = (data) => {
             const msg = { type: 'pixel', x: data.x, y: data.y, color: data.color, user: userId };
@@ -399,12 +507,10 @@
               }
             });
           };
-          
+
         } catch (err) {
           log('Connection failed: ' + err.message);
-          setStatus(false, 'Failed');
-          joinBtn.disabled = false;
-          joinBtn.textContent = 'Join';
+          resetConnectionState('Failed');
         }
       });
 
