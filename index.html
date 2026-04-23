@@ -108,18 +108,6 @@
         border-radius: 50%;
         border: 2px solid var(--border);
       }
-      #cursors canvas {
-        position: absolute;
-        pointer-events: none;
-      }
-      .cursor-label {
-        position: absolute;
-        font-size: 10px;
-        padding: 2px 4px;
-        border-radius: 3px;
-        background: rgba(0,0,0,0.7);
-        white-space: nowrap;
-      }
     </style>
   </head>
   <body>
@@ -142,11 +130,6 @@
             <span class="muted">Your ID:</span>
             <span id="userId">...</span>
           </div>
-          
-          <div class="row">
-            <span class="muted">Users in room:</span>
-          </div>
-          <div class="users-list" id="usersList"></div>
           
           <div class="row">
             <span class="muted">Color:</span>
@@ -177,15 +160,11 @@
       <div class="right">
         <div class="card" style="position: relative; padding: 0; overflow: hidden;">
           <canvas id="board" width="200" height="200"></canvas>
-          <div id="cursors"></div>
         </div>
       </div>
     </div>
 
     <script type="module">
-      // Trystero P2P library for real-time sync
-      import { joinRoom, getAction } from 'https://cdn.jsdelivr.net/npm/trystero@0.2/+esm';
-
       const el = (id) => document.getElementById(id);
       const statusEl = el('status');
       const cooldownEl = el('cooldown');
@@ -196,18 +175,16 @@
       const randomBtn = el('randomBtn');
       const joinBtn = el('joinBtn');
       const roomNameInput = el('roomName');
-      const usersListEl = el('usersList');
-      const cursorsEl = el('cursors');
 
       const canvas = el('board');
       const ctx = canvas.getContext('2d', { alpha: false });
 
       let boardWidth = 200;
       let boardHeight = 200;
-      let cooldownMs = 2000; // 2 second cooldown for P2P
+      let cooldownMs = 2000;
       let cooldownUntil = 0;
+      let boardData = new Uint8ClampedArray(boardWidth * boardHeight * 4).fill(255);
 
-      // Generate unique user ID
       let userId = Math.random().toString(36).slice(2, 10);
       let userColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
       let room = null;
@@ -268,14 +245,31 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, boardWidth, boardHeight);
-        
-        // Draw pixels at 4x scale
         ctx.scale(4, 4);
       }
 
       function drawPixel(x, y, color) {
         ctx.fillStyle = color;
         ctx.fillRect(x, y, 1, 1);
+        
+        // Store in board data
+        const idx = (y * boardWidth + x) * 4;
+        const rgb = hexToRgb(color);
+        if (rgb) {
+          boardData[idx] = rgb.r;
+          boardData[idx+1] = rgb.g;
+          boardData[idx+2] = rgb.b;
+          boardData[idx+3] = 255;
+        }
+      }
+      
+      function hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+          r: parseInt(result[1], 16),
+          g: parseInt(result[2], 16),
+          b: parseInt(result[3], 16)
+        } : null;
       }
 
       function getBoardPos(e) {
@@ -288,7 +282,7 @@
         };
       }
 
-      // Initialize board
+      // Initialize
       resizeCanvasToBoard();
       renderPalette();
       userIdEl.textContent = userId;
@@ -313,19 +307,9 @@
         drawPixel(x, y, selectedColor);
         cooldownUntil = now + cooldownMs;
         
-        // Send pixel to peers
-        sendPixel({ x, y, color: selectedColor, user: userId });
-      });
-
-      // Handle mouse move for cursor sharing
-      canvas.addEventListener('mousemove', (e) => {
-        if (!room || !sendCursor) return;
-        
-        const rect = canvas.getBoundingClientRect();
-        const x = (e.clientX - rect.left) / rect.width;
-        const y = (e.clientY - rect.top) / rect.height;
-        
-        sendCursor({ x, y, user: userId, color: userColor });
+        if (sendPixel) {
+          sendPixel({ x, y, color: selectedColor, user: userId });
+        }
       });
 
       // Random color button
@@ -346,60 +330,75 @@
         joinBtn.textContent = 'Connecting...';
 
         try {
-          // Join the P2P room via Trystero
-          room = joinRoom({ appId: 'pixelplace-' + roomName }, roomName);
+          // Use PeerJS for P2P connections
+          const PeerJS = await import('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/+esm');
+          const Peer = PeerJS.default || PeerJS.Peer;
           
-          // Get send functions
-          const [sendPixelFn, getPixelAction] = room.makeAction('pixel');
-          const [sendCursorFn, getCursorAction] = room.makeAction('cursor');
-          const [sendBoardFn, getBoardAction] = room.makeAction('board');
-          
-          sendPixel = sendPixelFn;
-          sendCursor = sendCursorFn;
-          
-          // Handle incoming pixels
-          getPixelAction(({ x, y, color, user }) => {
-            if (user !== userId) {
-              drawPixel(x, y, color);
-            }
+          // Create peer - first user gets this ID, others will get error and connect
+          const peerId = 'pixelplace-' + roomName;
+          const peer = new Peer(peerId, {
+            debug: 1
           });
           
-          // Handle incoming cursors
-          getCursorAction(({ x, y, user, color }) => {
-            if (user !== userId) {
-              updateCursor(user, x, y, color);
-            }
-          });
-          
-          // Handle board sync requests
-          getBoardAction(() => {
-            // Send our board state to new peers
-            const imageData = ctx.getImageData(0, 0, boardWidth, boardHeight);
-            sendBoardFn(Array.from(imageData.data));
-          });
-          
-          // Handle peer connections
-          room.onPeerJoin((peerId) => {
-            log(`User joined: ${peerId.slice(0,6)}`);
-            peers.set(peerId, true);
-            updateUsersList();
+          peer.on('open', (id) => {
+            log('Connected to signaling server');
+            setStatus(true, 'Connected');
+            joinBtn.textContent = 'Joined!';
+            room = true;
             
-            // Request board state from new peer
-            sendBoardFn('request');
+            // Listen for incoming connections from other users
+            peer.on('connection', (conn) => {
+              setupConnection(conn, true);
+            });
+            
+            log('Waiting for others...');
           });
           
-          room.onPeerLeave((peerId) => {
-            log(`User left: ${peerId.slice(0,6)}`);
-            peers.delete(peerId);
-            updateUsersList();
-            removeCursor(peerId);
+          peer.on('error', (err) => {
+            log('Peer error: ' + err.type);
+            
+            // If host ID taken, create new peer to connect to host
+            if (err.type === 'unavailable-id') {
+              log('Host exists, connecting...');
+              const newPeer = new Peer(null, { debug: 1 });
+              newPeer.on('open', () => {
+                const conn = newPeer.connect(peerId, { reliable: true });
+                setupConnection(conn, false);
+              });
+            }
           });
-
-          setStatus(true, 'Connected');
-          log(`Joined room: ${roomName}`);
-          userIdEl.textContent = userId;
           
-          joinBtn.textContent = 'Joined!';
+          function setupConnection(conn, isHost) {
+            conn.on('open', () => {
+              const peerDisplay = conn.peer.replace('pixelplace-', '');
+              log(`Connected to: ${peerDisplay}`);
+              peers.set(conn.peer, conn);
+              
+              // If we're host, send empty board (new users start fresh)
+              // In a full implementation, you'd sync the full board
+            });
+            
+            conn.on('data', (data) => {
+              if (data.type === 'pixel' && data.user !== userId) {
+                drawPixel(data.x, data.y, data.color);
+              }
+            });
+            
+            conn.on('close', () => {
+              log(`Disconnected: ${conn.peer.replace('pixelplace-', '')}`);
+              peers.delete(conn.peer);
+            });
+          }
+          
+          // Override sendPixel to use all connections
+          sendPixel = (data) => {
+            const msg = { type: 'pixel', x: data.x, y: data.y, color: data.color, user: userId };
+            peers.forEach((conn) => {
+              if (conn.open) {
+                conn.send(msg);
+              }
+            });
+          };
           
         } catch (err) {
           log('Connection failed: ' + err.message);
@@ -408,61 +407,6 @@
           joinBtn.textContent = 'Join';
         }
       });
-
-      // Cursor management
-      const cursorElements = new Map();
-
-      function updateCursor(peerId, x, y, color) {
-        let cursor = cursorElements.get(peerId);
-        if (!cursor) {
-          cursor = document.createElement('div');
-          cursor.style.cssText = `
-            position: absolute;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            border: 2px solid white;
-            pointer-events: none;
-            transition: left 0.1s, top 0.1s;
-            z-index: 100;
-          `;
-          cursorsEl.appendChild(cursor);
-          cursorElements.set(peerId, cursor);
-        }
-        
-        const rect = canvas.getBoundingClientRect();
-        cursor.style.left = (x * rect.width - 6) + 'px';
-        cursor.style.top = (y * rect.height - 6) + 'px';
-        cursor.style.background = color || '#f0f';
-      }
-
-      function removeCursor(peerId) {
-        const cursor = cursorElements.get(peerId);
-        if (cursor) {
-          cursor.remove();
-          cursorElements.delete(peerId);
-        }
-      }
-
-      function updateUsersList() {
-        usersListEl.innerHTML = '';
-        
-        // Add self
-        const selfDot = document.createElement('div');
-        selfDot.className = 'user-dot';
-        selfDot.style.background = userColor;
-        selfDot.title = 'You';
-        usersListEl.appendChild(selfDot);
-        
-        // Add peers
-        for (const peer of peers.keys()) {
-          const dot = document.createElement('div');
-          dot.className = 'user-dot';
-          dot.style.background = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
-          dot.title = peer.slice(0, 8);
-          usersListEl.appendChild(dot);
-        }
-      }
 
       // Cooldown display
       setInterval(() => {
