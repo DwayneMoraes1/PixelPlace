@@ -147,8 +147,7 @@ function connect() {
   }
 
   const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const WS_URL = 'wss://your-backend-host.onrender.com';
-  ws = new WebSocket(WS_URL);
+  ws = new WebSocket(`${proto}//${location.host}`);
 
   ws.addEventListener('open', () => {
     setStatus(true, 'Connected');
