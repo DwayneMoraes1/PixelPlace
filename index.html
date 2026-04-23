@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>PixelPlace</title>
+    <title>PixelPlace - Multiplayer Pixel Art</title>
     <style>
       :root {
         color-scheme: dark;
@@ -14,6 +14,7 @@
         --border: rgba(255, 255, 255, 0.12);
         --accent: #6aa9ff;
       }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans",
@@ -36,152 +37,438 @@
         padding: 14px;
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
       }
-      h1 {
-        margin: 0 0 8px;
-        font-size: 18px;
-        letter-spacing: 0.2px;
+      h1 { margin: 0 0 8px; font-size: 18px; letter-spacing: 0.2px; }
+      .muted { color: var(--muted); font-size: 13px; line-height: 1.45; }
+      .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+      .row:first-of-type { margin-top: 0; }
+      button {
+        background: var(--accent);
+        color: var(--bg);
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 14px;
       }
-      .muted {
-        color: var(--muted);
-        font-size: 13px;
-        line-height: 1.45;
+      button:hover { filter: brightness(1.1); }
+      button:disabled { opacity: 0.5; cursor: not-allowed; }
+      #board {
+        width: 800px;
+        height: 800px;
+        image-rendering: pixelated;
+        cursor: crosshair;
+        border-radius: 8px;
+        background: #fff;
       }
-      .row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-      .spacer {
-        height: 10px;
-      }
-      .pill {
-        font-size: 12px;
-        padding: 6px 10px;
-        border-radius: 999px;
-        border: 1px solid var(--border);
-        color: var(--muted);
-      }
-      .pill.ok {
-        color: #a7f3d0;
-        border-color: rgba(16, 185, 129, 0.45);
-        background: rgba(16, 185, 129, 0.12);
-      }
-      .pill.bad {
-        color: #fecaca;
-        border-color: rgba(239, 68, 68, 0.45);
-        background: rgba(239, 68, 68, 0.12);
-      }
-      .palette {
-        display: grid;
-        grid-template-columns: repeat(8, 1fr);
-        gap: 8px;
-        margin-top: 8px;
-      }
+      .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
       .swatch {
         width: 100%;
-        aspect-ratio: 1 / 1;
-        border-radius: 10px;
-        border: 2px solid rgba(255, 255, 255, 0.08);
+        aspect-ratio: 1;
+        border: 2px solid transparent;
+        border-radius: 6px;
         cursor: pointer;
-        outline: none;
-        transition: transform 80ms ease, border-color 80ms ease;
+        transition: transform 0.1s;
       }
-      .swatch:hover {
-        transform: translateY(-1px);
+      .swatch:hover { transform: scale(1.1); }
+      .swatch.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
+      #log {
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        height: 120px;
+        overflow-y: auto;
+        background: #000;
+        border-radius: 6px;
+        padding: 8px;
+        color: #8f9;
       }
-      .swatch.selected {
-        border-color: rgba(106, 169, 255, 0.95);
-        box-shadow: 0 0 0 3px rgba(106, 169, 255, 0.22);
-      }
-      .btn {
-        background: rgba(106, 169, 255, 0.14);
-        border: 1px solid rgba(106, 169, 255, 0.55);
-        color: var(--text);
-        padding: 10px 12px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-weight: 600;
-      }
-      .btn:active {
-        transform: translateY(1px);
-      }
-      .input {
-        background: rgba(255, 255, 255, 0.06);
+      #status { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+      #status.ok { background: rgba(0, 200, 100, 0.2); color: #4f8; }
+      #status.bad { background: rgba(255, 50, 50, 0.2); color: #f84; }
+      #cooldown { font-variant-numeric: tabular-nums; }
+      #userId { font-family: monospace; font-size: 12px; color: var(--muted); }
+      .room-input {
+        background: var(--bg);
         border: 1px solid var(--border);
-        border-radius: 10px;
         color: var(--text);
-        padding: 10px 12px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        font-size: 14px;
         width: 100%;
       }
-      .boardCard {
-        display: grid;
-        place-items: center;
-        padding: 12px;
+      .users-list {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        margin-top: 8px;
       }
-      canvas {
-        background: "#ffffff";
-        border: 1px solid rgba(255, 255, 255, 0.12);
-        border-radius: 12px;
-        image-rendering: pixelated;
+      .user-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 2px solid var(--border);
       }
-      .hint {
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 12px;
+      #cursors canvas {
+        position: absolute;
+        pointer-events: none;
       }
-      .mono {
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-        font-size: 12px;
-        color: var(--muted);
-        word-break: break-all;
-      }
-      @media (max-width: 960px) {
-        .wrap {
-          grid-template-columns: 1fr;
-        }
+      .cursor-label {
+        position: absolute;
+        font-size: 10px;
+        padding: 2px 4px;
+        border-radius: 3px;
+        background: rgba(0,0,0,0.7);
+        white-space: nowrap;
       }
     </style>
   </head>
   <body>
     <div class="wrap">
-      <section class="card">
-        <h1>PixelPlace</h1>
-        <div class="muted">
-          Click on the board to place a pixel. Everyone sees updates live. Cooldown is enforced by the server.
+      <div class="left">
+        <div class="card">
+          <h1>PixelPlace</h1>
+          <p class="muted">Collaborative pixel art. Share the room name with friends!</p>
+          
+          <div class="row">
+            <input type="text" id="roomName" class="room-input" placeholder="Room name..." value="pixelplace-demo">
+            <button id="joinBtn">Join</button>
+          </div>
+          
+          <div class="row">
+            <span id="status" class="bad">Disconnected</span>
+          </div>
+          
+          <div class="row">
+            <span class="muted">Your ID:</span>
+            <span id="userId">...</span>
+          </div>
+          
+          <div class="row">
+            <span class="muted">Users in room:</span>
+          </div>
+          <div class="users-list" id="usersList"></div>
+          
+          <div class="row">
+            <span class="muted">Color:</span>
+            <span id="selectedColor">#ff4500</span>
+          </div>
+          
+          <div class="row">
+            <button id="randomBtn">Random Color</button>
+          </div>
+          
+          <div class="row">
+            <span class="muted">Cooldown:</span>
+            <span id="cooldown">0s</span>
+          </div>
         </div>
-
-        <div class="spacer"></div>
-        <div class="row">
-          <div id="status" class="pill bad">Disconnected</div>
-          <div id="cooldown" class="pill">Cooldown: —</div>
+        
+        <div class="card" style="margin-top: 16px;">
+          <h1>Color Palette</h1>
+          <div class="palette" id="palette"></div>
         </div>
-
-        <div class="spacer"></div>
-        <div class="muted">Selected color</div>
-        <div class="row">
-          <div id="selectedColor" class="pill">—</div>
-          <button id="randomBtn" class="btn" type="button">Random color</button>
+        
+        <div class="card" style="margin-top: 16px;">
+          <h1>Activity Log</h1>
+          <div id="log"></div>
         </div>
-
-        <div class="palette" id="palette"></div>
-
-        <div class="spacer"></div>
-        <div class="muted">User</div>
-        <div id="userId" class="mono">—</div>
-
-        <div class="spacer"></div>
-        <div class="muted">Log</div>
-        <div id="log" class="mono" style="max-height: 220px; overflow: auto"></div>
-      </section>
-
-      <section class="card boardCard">
-        <canvas id="board" width="800" height="800"></canvas>
-        <div class="hint">Tip: zoom your browser to scale the pixels. The canvas uses “pixelated” rendering.</div>
-      </section>
+      </div>
+      
+      <div class="right">
+        <div class="card" style="position: relative; padding: 0; overflow: hidden;">
+          <canvas id="board" width="200" height="200"></canvas>
+          <div id="cursors"></div>
+        </div>
+      </div>
     </div>
 
-    <script type="module" src="./client.js"></script>
+    <script type="module">
+      // Trystero P2P library for real-time sync
+      import { joinRoom, getAction } from 'https://cdn.jsdelivr.net/npm/trystero@0.2/+esm';
+
+      const el = (id) => document.getElementById(id);
+      const statusEl = el('status');
+      const cooldownEl = el('cooldown');
+      const selectedColorEl = el('selectedColor');
+      const userIdEl = el('userId');
+      const logEl = el('log');
+      const paletteEl = el('palette');
+      const randomBtn = el('randomBtn');
+      const joinBtn = el('joinBtn');
+      const roomNameInput = el('roomName');
+      const usersListEl = el('usersList');
+      const cursorsEl = el('cursors');
+
+      const canvas = el('board');
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      let boardWidth = 200;
+      let boardHeight = 200;
+      let cooldownMs = 2000; // 2 second cooldown for P2P
+      let cooldownUntil = 0;
+
+      // Generate unique user ID
+      let userId = Math.random().toString(36).slice(2, 10);
+      let userColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+      let room = null;
+      let sendPixel, sendCursor;
+      let peers = new Map();
+
+      const palette = [
+        '#6D001A', '#BE0039', '#FF4500', '#FFA800', '#FFD635', '#FFF8B8',
+        '#00A368', '#00CC78', '#7EED56', '#00756F', '#009EAA', '#00CCC0',
+        '#2450A4', '#3690EA', '#51E9F4', '#493AC1', '#6A5CFF', '#94B3FF',
+        '#811E9F', '#B44AC0', '#E4ABFF', '#DE107F', '#FF3881', '#FF99AA',
+        '#6D482F', '#9C6926', '#FFB470', '#000000', '#515252', '#898D90',
+        '#D4D7D9', '#FFFFFF'
+      ];
+
+      let selectedColor = palette[2];
+
+      function log(line) {
+        const t = new Date().toISOString().slice(11, 19);
+        const div = document.createElement('div');
+        div.textContent = `[${t}] ${line}`;
+        logEl.appendChild(div);
+        logEl.scrollTop = logEl.scrollHeight;
+      }
+
+      function setStatus(ok, text) {
+        statusEl.textContent = text;
+        statusEl.classList.toggle('ok', ok);
+        statusEl.classList.toggle('bad', !ok);
+      }
+
+      function setSelectedColor(c) {
+        selectedColor = c;
+        selectedColorEl.textContent = c;
+        for (const btn of paletteEl.querySelectorAll('button[data-color]')) {
+          btn.classList.toggle('selected', btn.dataset.color === c);
+        }
+      }
+
+      function renderPalette() {
+        paletteEl.innerHTML = '';
+        for (const c of palette) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'swatch';
+          btn.style.background = c;
+          btn.dataset.color = c;
+          btn.title = c;
+          btn.addEventListener('click', () => setSelectedColor(c));
+          paletteEl.appendChild(btn);
+        }
+        setSelectedColor(selectedColor);
+      }
+
+      function resizeCanvasToBoard() {
+        ctx.imageSmoothingEnabled = false;
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, boardWidth, boardHeight);
+        
+        // Draw pixels at 4x scale
+        ctx.scale(4, 4);
+      }
+
+      function drawPixel(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 1, 1);
+      }
+
+      function getBoardPos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = boardWidth / rect.width;
+        const scaleY = boardHeight / rect.height;
+        return {
+          x: Math.floor((e.clientX - rect.left) * scaleX),
+          y: Math.floor((e.clientY - rect.top) * scaleY)
+        };
+      }
+
+      // Initialize board
+      resizeCanvasToBoard();
+      renderPalette();
+      userIdEl.textContent = userId;
+
+      // Handle canvas clicks
+      canvas.addEventListener('click', async (e) => {
+        if (!room) {
+          log('Join a room first!');
+          return;
+        }
+        
+        const now = Date.now();
+        if (now < cooldownUntil) {
+          const remaining = Math.ceil((cooldownUntil - now) / 1000);
+          log(`Wait ${remaining}s before placing`);
+          return;
+        }
+
+        const { x, y } = getBoardPos(e);
+        if (x < 0 || x >= boardWidth || y < 0 || y >= boardHeight) return;
+
+        drawPixel(x, y, selectedColor);
+        cooldownUntil = now + cooldownMs;
+        
+        // Send pixel to peers
+        sendPixel({ x, y, color: selectedColor, user: userId });
+      });
+
+      // Handle mouse move for cursor sharing
+      canvas.addEventListener('mousemove', (e) => {
+        if (!room || !sendCursor) return;
+        
+        const rect = canvas.getBoundingClientRect();
+        const x = (e.clientX - rect.left) / rect.width;
+        const y = (e.clientY - rect.top) / rect.height;
+        
+        sendCursor({ x, y, user: userId, color: userColor });
+      });
+
+      // Random color button
+      randomBtn.addEventListener('click', () => {
+        const c = palette[Math.floor(Math.random() * palette.length)];
+        setSelectedColor(c);
+      });
+
+      // Join room button
+      joinBtn.addEventListener('click', async () => {
+        const roomName = roomNameInput.value.trim();
+        if (!roomName) {
+          log('Please enter a room name');
+          return;
+        }
+
+        joinBtn.disabled = true;
+        joinBtn.textContent = 'Connecting...';
+
+        try {
+          // Join the P2P room via Trystero
+          room = joinRoom({ appId: 'pixelplace-' + roomName }, roomName);
+          
+          // Get send functions
+          const [sendPixelFn, getPixelAction] = room.makeAction('pixel');
+          const [sendCursorFn, getCursorAction] = room.makeAction('cursor');
+          const [sendBoardFn, getBoardAction] = room.makeAction('board');
+          
+          sendPixel = sendPixelFn;
+          sendCursor = sendCursorFn;
+          
+          // Handle incoming pixels
+          getPixelAction(({ x, y, color, user }) => {
+            if (user !== userId) {
+              drawPixel(x, y, color);
+            }
+          });
+          
+          // Handle incoming cursors
+          getCursorAction(({ x, y, user, color }) => {
+            if (user !== userId) {
+              updateCursor(user, x, y, color);
+            }
+          });
+          
+          // Handle board sync requests
+          getBoardAction(() => {
+            // Send our board state to new peers
+            const imageData = ctx.getImageData(0, 0, boardWidth, boardHeight);
+            sendBoardFn(Array.from(imageData.data));
+          });
+          
+          // Handle peer connections
+          room.onPeerJoin((peerId) => {
+            log(`User joined: ${peerId.slice(0,6)}`);
+            peers.set(peerId, true);
+            updateUsersList();
+            
+            // Request board state from new peer
+            sendBoardFn('request');
+          });
+          
+          room.onPeerLeave((peerId) => {
+            log(`User left: ${peerId.slice(0,6)}`);
+            peers.delete(peerId);
+            updateUsersList();
+            removeCursor(peerId);
+          });
+
+          setStatus(true, 'Connected');
+          log(`Joined room: ${roomName}`);
+          userIdEl.textContent = userId;
+          
+          joinBtn.textContent = 'Joined!';
+          
+        } catch (err) {
+          log('Connection failed: ' + err.message);
+          setStatus(false, 'Failed');
+          joinBtn.disabled = false;
+          joinBtn.textContent = 'Join';
+        }
+      });
+
+      // Cursor management
+      const cursorElements = new Map();
+
+      function updateCursor(peerId, x, y, color) {
+        let cursor = cursorElements.get(peerId);
+        if (!cursor) {
+          cursor = document.createElement('div');
+          cursor.style.cssText = `
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+            pointer-events: none;
+            transition: left 0.1s, top 0.1s;
+            z-index: 100;
+          `;
+          cursorsEl.appendChild(cursor);
+          cursorElements.set(peerId, cursor);
+        }
+        
+        const rect = canvas.getBoundingClientRect();
+        cursor.style.left = (x * rect.width - 6) + 'px';
+        cursor.style.top = (y * rect.height - 6) + 'px';
+        cursor.style.background = color || '#f0f';
+      }
+
+      function removeCursor(peerId) {
+        const cursor = cursorElements.get(peerId);
+        if (cursor) {
+          cursor.remove();
+          cursorElements.delete(peerId);
+        }
+      }
+
+      function updateUsersList() {
+        usersListEl.innerHTML = '';
+        
+        // Add self
+        const selfDot = document.createElement('div');
+        selfDot.className = 'user-dot';
+        selfDot.style.background = userColor;
+        selfDot.title = 'You';
+        usersListEl.appendChild(selfDot);
+        
+        // Add peers
+        for (const peer of peers.keys()) {
+          const dot = document.createElement('div');
+          dot.className = 'user-dot';
+          dot.style.background = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
+          dot.title = peer.slice(0, 8);
+          usersListEl.appendChild(dot);
+        }
+      }
+
+      // Cooldown display
+      setInterval(() => {
+        const remaining = Math.max(0, cooldownUntil - Date.now());
+        cooldownEl.textContent = (remaining / 1000).toFixed(1) + 's';
+      }, 100);
+    </script>
   </body>
 </html>
-
