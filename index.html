@@ -7,159 +7,435 @@
     <style>
       :root {
         color-scheme: dark;
-        --bg: #0b0f19;
-        --panel: #121a2a;
-        --text: #e6e9f2;
-        --muted: #a6afc3;
-        --border: rgba(255, 255, 255, 0.12);
-        --accent: #6aa9ff;
+        --bg: #050505;
+        --panel: #0a0a0b;
+        --panel-2: #090909;
+        --frame: #111214;
+        --border: #232427;
+        --border-soft: #17181b;
+        --text: #f2f0e8;
+        --muted: #6f675f;
+        --dim: #867d73;
+        --accent: #ff5a12;
+        --accent-2: #ff6a1c;
+        --canvas: #e7e7e7;
       }
+
       * { box-sizing: border-box; }
+
+      html, body {
+        height: 100%;
+      }
+
       body {
         margin: 0;
-        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans",
-          "Apple Color Emoji", "Segoe UI Emoji";
-        background: radial-gradient(1200px 600px at 30% 10%, #182546 0%, var(--bg) 60%);
+        min-height: 100vh;
+        font-family: "SFMono-Regular", ui-monospace, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+        background:
+          radial-gradient(circle at top left, rgba(255,255,255,0.02), transparent 28%),
+          linear-gradient(180deg, #020202 0%, #030303 100%);
         color: var(--text);
+        letter-spacing: 0.02em;
       }
+
       .wrap {
-        display: grid;
-        grid-template-columns: 320px 1fr;
-        gap: 16px;
-        padding: 16px;
-        max-width: 1400px;
+        max-width: 1540px;
         margin: 0 auto;
+        padding: 10px 12px 14px;
+        display: grid;
+        grid-template-columns: 306px 1fr;
+        gap: 16px;
       }
+
+      .left {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
       .card {
-        background: color-mix(in srgb, var(--panel) 92%, black);
+        background: linear-gradient(180deg, rgba(11,11,12,0.98), rgba(7,7,8,0.98));
         border: 1px solid var(--border);
-        border-radius: 14px;
-        padding: 14px;
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.02),
+          0 0 0 1px rgba(0,0,0,0.35);
+        padding: 14px 14px 15px;
       }
-      h1 { margin: 0 0 8px; font-size: 18px; letter-spacing: 0.2px; }
-      .muted { color: var(--muted); font-size: 13px; line-height: 1.45; }
-      .row { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
-      .row:first-of-type { margin-top: 0; }
+
+      .brand {
+        padding-top: 16px;
+        padding-bottom: 14px;
+      }
+
+      .brand h1 {
+        margin: 0;
+        font-size: 18px;
+        line-height: 1;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #f7f1e7;
+        font-weight: 700;
+      }
+
+      .brand .muted {
+        margin-top: 10px;
+      }
+
+      .muted {
+        color: var(--dim);
+        font-size: 12px;
+        line-height: 1.3;
+      }
+
+      .room-row {
+        display: grid;
+        grid-template-columns: 1fr 58px;
+        gap: 8px;
+        margin-top: 16px;
+        margin-bottom: 18px;
+      }
+
+      .room-input {
+        width: 100%;
+        height: 32px;
+        background: #060606;
+        border: 1px solid #242424;
+        color: #fbf7ef;
+        outline: none;
+        padding: 0 12px;
+        border-radius: 0;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .room-input::placeholder { color: #8c8379; }
+
       button {
+        appearance: none;
+        border: 0;
+        border-radius: 0;
         background: var(--accent);
-        color: var(--bg);
-        border: none;
-        padding: 8px 16px;
-        border-radius: 8px;
-        font-weight: 600;
+        color: #fffdf7;
+        font: inherit;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.03em;
         cursor: pointer;
-        font-size: 14px;
+        transition: filter 0.12s ease, transform 0.02s ease;
       }
-      button:hover { filter: brightness(1.1); }
-      button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+      button:hover { filter: brightness(1.08); }
+      button:active { transform: translateY(1px); }
+      button:disabled { opacity: 0.55; cursor: not-allowed; }
+
+      #joinBtn {
+        height: 32px;
+        font-size: 13px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        row-gap: 16px;
+        column-gap: 12px;
+        align-items: center;
+        margin-top: 6px;
+        margin-bottom: 12px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      .value {
+        font-size: 13px;
+        color: #e8e1d6;
+        font-weight: 700;
+      }
+
+      #status {
+        display: inline-block;
+        background: transparent;
+        border: none;
+        border-radius: 0;
+        padding: 0;
+        font: inherit;
+        font-size: 13px;
+        text-transform: uppercase;
+        font-weight: 800;
+        letter-spacing: 0.04em;
+      }
+
+      #status.ok { color: #57d66c; }
+      #status.bad { color: #ff3a22; }
+
+      .color-value {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .color-chip {
+        width: 22px;
+        height: 22px;
+        background: var(--accent);
+        border: 1px solid rgba(255,255,255,0.08);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+      }
+
+      #selectedColor {
+        color: #fff7e9;
+        font-size: 12px;
+        font-weight: 800;
+      }
+
+      #userId {
+        font-size: 12px;
+        color: #7a7268;
+        font-weight: 500;
+      }
+
+      #randomBtn {
+        height: 34px;
+        padding: 0 16px;
+        font-size: 12px;
+        min-width: 88px;
+        margin-bottom: 10px;
+      }
+
+      .wait-row {
+        display: grid;
+        grid-template-columns: 72px 1fr;
+        align-items: center;
+      }
+
+      #cooldown {
+        font-size: 14px;
+        color: #faf6ef;
+        font-weight: 800;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .footer-stats {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #17181a;
+        color: #a2988b;
+        font-size: 12px;
+        display: flex;
+        gap: 16px;
+      }
+
+      .section-title {
+        color: #7f776d;
+        text-transform: uppercase;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        margin: 0 0 14px;
+      }
+
+      .palette-wrap {
+        overflow: hidden;
+      }
+
+      .palette {
+        display: grid;
+        grid-template-columns: repeat(8, 34px);
+        grid-auto-rows: 34px;
+        gap: 1px;
+        width: fit-content;
+        background: #161616;
+        border: 1px solid #242424;
+      }
+
+      .swatch {
+        width: 34px;
+        height: 34px;
+        border: none;
+        padding: 0;
+        outline: none;
+        position: relative;
+      }
+
+      .swatch.selected::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border: 2px solid #e7dfd1;
+        box-shadow: inset 0 0 0 1px rgba(0,0,0,0.35);
+      }
+
+      .palette-scrollbar {
+        height: 19px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f1efea;
+        border: 1px solid #bbb4aa;
+        border-top: none;
+        padding: 0 6px;
+        width: fit-content;
+        min-width: calc(34px * 8 + 7px);
+      }
+
+      .scroll-arrow {
+        width: 0;
+        height: 0;
+        border-top: 5px solid transparent;
+        border-bottom: 5px solid transparent;
+      }
+
+      .scroll-arrow.left { border-right: 6px solid #888176; }
+      .scroll-arrow.right { border-left: 6px solid #888176; }
+
+      .scroll-track {
+        flex: 1;
+        height: 10px;
+        background: #d4d0c7;
+        border-radius: 999px;
+        position: relative;
+      }
+
+      .scroll-thumb {
+        position: absolute;
+        left: 7%;
+        top: 1px;
+        height: 8px;
+        width: 44%;
+        background: #7d7d7d;
+        border-radius: 999px;
+      }
+
+      #log {
+        height: 110px;
+        background: #000;
+        border: 1px solid #151515;
+        color: #8ab78f;
+        font-size: 11px;
+        line-height: 1.45;
+        padding: 8px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+
+      .right {
+        min-width: 0;
+      }
+
+      .board-shell {
+        min-height: calc(100vh - 24px);
+        background: linear-gradient(180deg, #090909 0%, #070707 100%);
+        border: 1px solid var(--border);
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.025);
+        display: grid;
+        place-items: center;
+        padding: 48px;
+      }
+
+      .canvas-frame {
+        width: min(100%, 764px);
+        aspect-ratio: 1 / 1;
+        background: var(--canvas);
+        box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+        display: grid;
+        place-items: stretch;
+      }
+
       #board {
-        width: 800px;
-        height: 800px;
+        width: 100%;
+        height: 100%;
+        display: block;
         image-rendering: pixelated;
         cursor: crosshair;
-        border-radius: 8px;
-        background: #fff;
+        background: var(--canvas);
       }
-      .palette { display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
-      .swatch {
-        width: 100%;
-        aspect-ratio: 1;
-        border: 2px solid transparent;
-        border-radius: 6px;
-        cursor: pointer;
-        transition: transform 0.1s;
+
+      @media (max-width: 1200px) {
+        .wrap {
+          grid-template-columns: 306px minmax(0, 1fr);
+        }
+        .board-shell {
+          padding: 28px;
+        }
       }
-      .swatch:hover { transform: scale(1.1); }
-      .swatch.selected { border-color: #fff; box-shadow: 0 0 8px rgba(255,255,255,0.5); }
-      #log {
-        font-family: ui-monospace, monospace;
-        font-size: 12px;
-        height: 120px;
-        overflow-y: auto;
-        background: #000;
-        border-radius: 6px;
-        padding: 8px;
-        color: #8f9;
-      }
-      #status { padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; }
-      #status.ok { background: rgba(0, 200, 100, 0.2); color: #4f8; }
-      #status.bad { background: rgba(255, 50, 50, 0.2); color: #f84; }
-      #cooldown { font-variant-numeric: tabular-nums; }
-      #userId { font-family: monospace; font-size: 12px; color: var(--muted); }
-      .room-input {
-        background: var(--bg);
-        border: 1px solid var(--border);
-        color: var(--text);
-        padding: 8px 12px;
-        border-radius: 6px;
-        font-size: 14px;
-        width: 100%;
-      }
-      .users-list {
-        display: flex;
-        gap: 4px;
-        flex-wrap: wrap;
-        margin-top: 8px;
-      }
-      .user-dot {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        border: 2px solid var(--border);
+
+      @media (max-width: 900px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+        .board-shell {
+          min-height: auto;
+        }
+        .canvas-frame {
+          width: 100%;
+          max-width: 760px;
+        }
       }
     </style>
   </head>
   <body>
     <div class="wrap">
       <div class="left">
-        <div class="card">
-          <h1>PixelPlace</h1>
-          <p class="muted">Collaborative pixel art. Share the room name with friends!</p>
-          
-          <div class="row">
-            <input type="text" id="roomName" class="room-input" placeholder="Room name..." value="pixelplace-demo">
-            <button id="joinBtn">Join</button>
+        <div class="card brand">
+          <h1>PIXELPLACE</h1>
+          <div class="muted">Collaborative pixel canvas</div>
+
+          <div class="room-row">
+            <input type="text" id="roomName" class="room-input" placeholder="main" value="main">
+            <button id="joinBtn">JOIN</button>
           </div>
-          
-          <div class="row">
-            <span id="status" class="bad">Disconnected</span>
+
+          <div class="stats">
+            <div class="label">STATUS</div>
+            <div class="value"><span id="status" class="bad">OFFLINE</span></div>
+
+            <div class="label">ID</div>
+            <div class="value"><span id="userId">...</span></div>
+
+            <div class="label">COLOR</div>
+            <div class="value color-value">
+              <span class="color-chip" id="colorChip"></span>
+              <span id="selectedColor">#FF4500</span>
+            </div>
           </div>
-          
-          <div class="row">
-            <span class="muted">Your ID:</span>
-            <span id="userId">...</span>
+
+          <button id="randomBtn">RANDOM</button>
+
+          <div class="wait-row">
+            <div class="label">WAIT</div>
+            <div class="value"><span id="cooldown">0.0s</span></div>
           </div>
-          
-          <div class="row">
-            <span class="muted">Color:</span>
-            <span id="selectedColor">#ff4500</span>
-          </div>
-          
-          <div class="row">
-            <button id="randomBtn">Random Color</button>
-          </div>
-          
-          <div class="row">
-            <span class="muted">Cooldown:</span>
-            <span id="cooldown">0s</span>
+
+          <div class="footer-stats">
+            <span>Pixels: <strong id="pixelCount">0</strong></span>
+            <span>Users: <strong id="userCount">0</strong></span>
           </div>
         </div>
-        
-        <div class="card" style="margin-top: 16px;">
-          <h1>Color Palette</h1>
+
+        <div class="card palette-wrap">
+          <div class="section-title">PALETTE</div>
           <div class="palette" id="palette"></div>
+          <div class="palette-scrollbar" aria-hidden="true">
+            <span class="scroll-arrow left"></span>
+            <div class="scroll-track"><span class="scroll-thumb"></span></div>
+            <span class="scroll-arrow right"></span>
+          </div>
         </div>
-        
-        <div class="card" style="margin-top: 16px;">
-          <h1>Activity Log</h1>
+
+        <div class="card">
+          <div class="section-title">LOG</div>
           <div id="log"></div>
         </div>
       </div>
-      
+
       <div class="right">
-        <div class="card" style="position: relative; padding: 0; overflow: hidden;">
-          <canvas id="board" width="800" height="800"></canvas>
+        <div class="board-shell">
+          <div class="canvas-frame">
+            <canvas id="board" width="800" height="800"></canvas>
+          </div>
         </div>
       </div>
     </div>
@@ -169,12 +445,15 @@
       const statusEl = el('status');
       const cooldownEl = el('cooldown');
       const selectedColorEl = el('selectedColor');
+      const colorChipEl = el('colorChip');
       const userIdEl = el('userId');
       const logEl = el('log');
       const paletteEl = el('palette');
       const randomBtn = el('randomBtn');
       const joinBtn = el('joinBtn');
       const roomNameInput = el('roomName');
+      const pixelCountEl = el('pixelCount');
+      const userCountEl = el('userCount');
 
       const canvas = el('board');
       const ctx = canvas.getContext('2d', { alpha: false });
@@ -188,9 +467,8 @@
       let hoverPos = null;
 
       let userId = Math.random().toString(36).slice(2, 10);
-      let userColor = '#' + Math.floor(Math.random()*16777215).toString(16).padStart(6, '0');
       let room = null;
-      let sendPixel, sendCursor;
+      let sendPixel;
       let peers = new Map();
       let activePeer = null;
       let isHost = false;
@@ -207,6 +485,15 @@
 
       let selectedColor = palette[2];
 
+      function updateStats() {
+        let pixels = 0;
+        for (let i = 0; i < boardData.length; i += 4) {
+          if (!(boardData[i] === 255 && boardData[i + 1] === 255 && boardData[i + 2] === 255)) pixels++;
+        }
+        pixelCountEl.textContent = pixels;
+        userCountEl.textContent = peers.size;
+      }
+
       function log(line) {
         const t = new Date().toISOString().slice(11, 19);
         const div = document.createElement('div');
@@ -216,14 +503,15 @@
       }
 
       function setStatus(ok, text) {
-        statusEl.textContent = text;
+        statusEl.textContent = text.toUpperCase();
         statusEl.classList.toggle('ok', ok);
         statusEl.classList.toggle('bad', !ok);
       }
 
       function setSelectedColor(c) {
         selectedColor = c;
-        selectedColorEl.textContent = c;
+        selectedColorEl.textContent = c.toUpperCase();
+        colorChipEl.style.background = c;
         for (const btn of paletteEl.querySelectorAll('button[data-color]')) {
           btn.classList.toggle('selected', btn.dataset.color === c);
         }
@@ -253,7 +541,7 @@
 
       function renderBoard() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
+        ctx.fillStyle = '#e7e7e7';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
         for (let y = 0; y < boardHeight; y++) {
@@ -269,10 +557,12 @@
         }
 
         if (hoverPos) {
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.65)';
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
           ctx.lineWidth = 1;
           ctx.strokeRect(hoverPos.x * pixelSize + 0.5, hoverPos.y * pixelSize + 0.5, pixelSize - 1, pixelSize - 1);
         }
+
+        updateStats();
       }
 
       function drawPixel(x, y, color) {
@@ -280,13 +570,13 @@
         const rgb = hexToRgb(color);
         if (rgb) {
           boardData[idx] = rgb.r;
-          boardData[idx+1] = rgb.g;
-          boardData[idx+2] = rgb.b;
-          boardData[idx+3] = 255;
+          boardData[idx + 1] = rgb.g;
+          boardData[idx + 2] = rgb.b;
+          boardData[idx + 3] = 255;
           renderBoard();
         }
       }
-      
+
       function hexToRgb(hex) {
         const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
         return result ? {
@@ -306,11 +596,10 @@
         };
       }
 
-      // Initialize
       resizeCanvasToBoard();
       renderPalette();
       userIdEl.textContent = userId;
-
+      updateStats();
 
       canvas.addEventListener('mousemove', (e) => {
         hoverPos = getBoardPos(e);
@@ -322,13 +611,12 @@
         renderBoard();
       });
 
-      // Handle canvas clicks
       canvas.addEventListener('click', async (e) => {
         if (!room) {
           log('Join a room first!');
           return;
         }
-        
+
         const now = Date.now();
         if (now < cooldownUntil) {
           const remaining = Math.ceil((cooldownUntil - now) / 1000);
@@ -337,23 +625,20 @@
         }
 
         const { x, y } = getBoardPos(e);
-        if (x < 0 || x >= boardWidth || y < 0 || y >= boardHeight) return;
-
         drawPixel(x, y, selectedColor);
         cooldownUntil = now + cooldownMs;
-        
+
         if (sendPixel) {
           sendPixel({ x, y, color: selectedColor, user: userId });
         }
       });
 
-      // Random color button
       randomBtn.addEventListener('click', () => {
         const c = palette[Math.floor(Math.random() * palette.length)];
         setSelectedColor(c);
       });
 
-      function resetConnectionState(statusText = 'Disconnected') {
+      function resetConnectionState(statusText = 'OFFLINE') {
         room = null;
         peers.forEach((conn) => {
           try { conn.close(); } catch {}
@@ -367,7 +652,8 @@
         currentRoomName = '';
         setStatus(false, statusText);
         joinBtn.disabled = false;
-        joinBtn.textContent = 'Join';
+        joinBtn.textContent = 'JOIN';
+        updateStats();
       }
 
       function serializeBoard() {
@@ -405,13 +691,14 @@
           log(`Connected to: ${peerDisplay}`);
           peers.set(conn.peer, conn);
           room = currentRoomName || true;
-          setStatus(true, 'Connected');
+          setStatus(true, 'CONNECTED');
           joinBtn.disabled = false;
-          joinBtn.textContent = isHost ? 'Hosting' : 'Joined!';
+          joinBtn.textContent = isHost ? 'HOSTING' : 'JOINED';
 
           if (isHost) {
             conn.send({ type: 'board-sync', pixels: serializeBoard() });
           }
+          updateStats();
         });
 
         conn.on('data', (data) => {
@@ -421,9 +708,7 @@
             drawPixel(data.x, data.y, data.color);
             if (isHost) {
               peers.forEach((peerConn, peerId) => {
-                if (peerId !== conn.peer && peerConn.open) {
-                  peerConn.send(data);
-                }
+                if (peerId !== conn.peer && peerConn.open) peerConn.send(data);
               });
             }
           }
@@ -437,21 +722,18 @@
         conn.on('close', () => {
           log(`Disconnected: ${conn.peer.replace('pixelplace-', '')}`);
           peers.delete(conn.peer);
-          if (!isHost && peers.size === 0) {
-            resetConnectionState('Disconnected');
-          }
+          if (!isHost && peers.size === 0) resetConnectionState('OFFLINE');
+          updateStats();
         });
 
         conn.on('error', (err) => {
           log('Connection error: ' + (err?.message || err));
           peers.delete(conn.peer);
-          if (!isHost) {
-            resetConnectionState('Failed');
-          }
+          if (!isHost) resetConnectionState('FAILED');
+          updateStats();
         });
       }
 
-      // Join room button
       joinBtn.addEventListener('click', async () => {
         const roomName = roomNameInput.value.trim();
         if (!roomName) {
@@ -460,46 +742,41 @@
         }
 
         if (activePeer || room) {
-          resetConnectionState('Disconnected');
+          resetConnectionState('OFFLINE');
         }
 
         joinBtn.disabled = true;
-        joinBtn.textContent = 'Connecting...';
-        setStatus(false, 'Connecting...');
+        joinBtn.textContent = '...';
+        setStatus(false, 'CONNECTING');
         currentRoomName = roomName;
 
         try {
-          // Use PeerJS for P2P connections
           const PeerJS = await import('https://cdn.jsdelivr.net/npm/peerjs@1.5.4/+esm');
           const Peer = PeerJS.default || PeerJS.Peer;
 
-          // Create peer - first user gets this ID, others will get error and connect
           const peerId = 'pixelplace-' + roomName;
-          const peer = new Peer(peerId, {
-            debug: 1
-          });
+          const peer = new Peer(peerId, { debug: 1 });
           activePeer = peer;
 
           peer.on('open', () => {
             isHost = true;
             log('Connected to signaling server as room host');
-            setStatus(false, 'Waiting for peer');
+            setStatus(false, 'WAITING');
             joinBtn.disabled = false;
-            joinBtn.textContent = 'Hosting';
+            joinBtn.textContent = 'HOSTING';
             room = roomName;
 
-            // Listen for incoming connections from other users
             peer.on('connection', (conn) => {
               setupConnection(conn);
             });
 
             log('Waiting for others...');
+            updateStats();
           });
 
           peer.on('error', (err) => {
             log('Peer error: ' + err.type);
 
-            // If host ID taken, create new peer to connect to host
             if (err.type === 'unavailable-id') {
               isHost = false;
               try { peer.destroy(); } catch {}
@@ -515,44 +792,36 @@
 
               newPeer.on('error', (guestErr) => {
                 log('Guest peer error: ' + guestErr.type);
-                resetConnectionState('Failed');
+                resetConnectionState('FAILED');
               });
             } else {
-              resetConnectionState('Failed');
+              resetConnectionState('FAILED');
             }
           });
 
           peer.on('disconnected', () => {
             log('Lost signaling server connection');
-            if (!isHost) {
-              resetConnectionState('Disconnected');
-            }
+            if (!isHost) resetConnectionState('OFFLINE');
           });
 
           peer.on('close', () => {
             log('Peer closed');
-            if (!isHost) {
-              resetConnectionState('Disconnected');
-            }
+            if (!isHost) resetConnectionState('OFFLINE');
           });
 
-          // Override sendPixel to use all connections
           sendPixel = (data) => {
             const msg = { type: 'pixel', x: data.x, y: data.y, color: data.color, user: userId };
             peers.forEach((conn) => {
-              if (conn.open) {
-                conn.send(msg);
-              }
+              if (conn.open) conn.send(msg);
             });
           };
 
         } catch (err) {
           log('Connection failed: ' + err.message);
-          resetConnectionState('Failed');
+          resetConnectionState('FAILED');
         }
       });
 
-      // Cooldown display
       setInterval(() => {
         const remaining = Math.max(0, cooldownUntil - Date.now());
         cooldownEl.textContent = (remaining / 1000).toFixed(1) + 's';
