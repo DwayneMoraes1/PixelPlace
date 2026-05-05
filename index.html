@@ -588,8 +588,10 @@
 
       function getBoardPos(e) {
         const rect = canvas.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / pixelSize);
-        const y = Math.floor((e.clientY - rect.top) / pixelSize);
+      
+        const x = Math.floor(((e.clientX - rect.left) / rect.width) * boardWidth);
+        const y = Math.floor(((e.clientY - rect.top) / rect.height) * boardHeight);
+      
         return {
           x: Math.max(0, Math.min(boardWidth - 1, x)),
           y: Math.max(0, Math.min(boardHeight - 1, y))
