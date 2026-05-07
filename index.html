@@ -672,9 +672,6 @@
         }
         return pixels;
       }
-
-      function applyBoardSnapshot(pixels) {
-        boardData.fill(255);
         for (const pixel of pixels || []) {
           const idx = (pixel.y * boardWidth + pixel.x) * 4;
           const rgb = hexToRgb(pixel.color);
